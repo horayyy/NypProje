@@ -1,10 +1,21 @@
-# app/modules/module_3/implementations.py
-from app.modules.module_3.base import BaseClass3
+from datetime import datetime
+from .base import MacBase, TurnuvaHatasi
 
-class Base3SubClass1(BaseClass3):
-    def method3(self):
-        print(f"Sinif Attribute: {self.base3Attribute}")
+class HazirlikMaci(MacBase):
+    
+    _toplam_hazirlik_maci = 0
+    _min_bilet_fiyati = 50.0
 
-class Base3SubClass2(BaseClass3):
-    def method3(self):
-        print(f"Sinif Attribute: {self.base3Attribute}")
+    def __init__(self, mac_id, ev_sahibi, deplasman, tarih_saat, organizasyon_adi):
+
+        super().__init__(ev_sahibi, deplasman, tarih_saat, mac_id)
+        self._organizasyon_adi = organizasyon_adi
+        self._bilet_fiyati = 100.0 # Varsayılan
+        self._seyirci_sayisi = 0
+        self._yardim_maci_mi = False
+
+    def puan_hesapla(self):
+        pass
+
+    def mac_detay_getir(self):
+        pass

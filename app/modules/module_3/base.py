@@ -1,25 +1,32 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-#projeye özel hata sınıfı   
+# Projeye özel hata sınıfı
 class TurnuvaHatasi(Exception):
-    pass    
+    pass
 
 class MacBase(ABC):
-    toplam_mac_sayisi = 0  
-    gecerli_durumlar = ['planlandi', 'devam_ediyor', 'tamamlandi', 'iptal_edildi', 'ertelendi']
+    
+    # Sınıf seviyesinde değişkenler (Class Attributes)
+    _toplam_mac_sayisi = 0
+    _gecerli_durumlar = ['planlandi', 'devam_ediyor', 'tamamlandi', 'iptal_edildi', 'ertelendi']
 
     def __init__(self, ev_sahibi, deplasman, tarih_saat, mac_id):
+        # Kapsüllenmiş değişkenlere (property setter üzerinden) atama yapılıyor
+        self.mac_id = mac_id
         self.ev_sahibi = ev_sahibi
         self.deplasman = deplasman
         self.tarih_saat = tarih_saat
-        self.mac_id = mac_id
-        self.durum = 'planlandi'
-        self.skor_ev = 0
-        self.skor_deplasman = 0
-        self.skor_girildimi = False
-        self. konum = "Ana Stadyum"
-        self.hakem = "Atanmadı"
+        
+        # Varsayılan değerler (Doğrudan protected değişkene atama)
+        self._durum = 'planlandi'
+        self._skor_ev = 0
+        self._skor_deplasman = 0
+        self._skor_girildimi = False
+        self._konum = "Ana Stadyum"
+        self._hakem = "Atanmadi"
+        
+        # Sınıf metodunu çağırarak sayacı artırır
         MacBase.sayac_artir()
 
     @property 
@@ -40,16 +47,18 @@ class MacBase(ABC):
     def ev_sahibi(self, value):
         if not isinstance(value, str):
             raise TypeError("Ev sahibi takımı geçerli bir string olarak giriniz.")
-        if len(value ) < 3:
+        if len(value) < 3:
             raise TurnuvaHatasi("Ev sahibi takım adı en az 3 karakter olmalıdır.")
         self._ev_sahibi = value
 
     @property
     def deplasman(self):
         return self._deplasman
+
     @deplasman.setter
     def deplasman(self, value):
-        if value == self._ev_sahibi:
+        # Henüz ev sahibi atanmadıysa hata vermemesi için kontrol (init sırası önemli)
+        if hasattr(self, '_ev_sahibi') and value == self._ev_sahibi:
             raise TurnuvaHatasi("Ev sahibi ve deplasman takımları aynı olamaz.")
         self._deplasman = value
     
@@ -69,7 +78,7 @@ class MacBase(ABC):
     
     @durum.setter
     def durum(self, value):
-        if value not in MacBase.gecerli_durumlar:
+        if value not in MacBase._gecerli_durumlar:
             gecerli_str = ", ".join(MacBase._gecerli_durumlar)
             raise TurnuvaHatasi(f"Geçersiz durum bilgisi. Beklenenler: {gecerli_str}")
         self._durum = value
@@ -77,6 +86,7 @@ class MacBase(ABC):
     @property
     def konum(self):
         return self._konum
+
     @konum.setter
     def konum(self, value):
         if len(value) < 3:
@@ -86,8 +96,41 @@ class MacBase(ABC):
     @property
     def hakem(self):    
         return self._hakem
+
     @hakem.setter
     def hakem(self, value):
         if any(karakter.isdigit() for karakter in value):
             raise TurnuvaHatasi("Hakem isminde sayi olamaz.")
         self._hakem = value
+
+    def skor_belirle(self, skor_ev, skor_deplasman):
+        if not isinstance(skor_ev, int) or not isinstance(skor_deplasman, int):
+            raise TypeError("Skorlar tam sayı olmalıdır.")
+        if skor_ev < 0 or skor_deplasman < 0:
+            raise TurnuvaHatasi("Skorlar negatif olamaz.")
+        
+        # Doğrudan gizli değişkenlere atama yapıyoruz
+        self._skor_ev = skor_ev
+        self._skor_deplasman = skor_deplasman
+        self._skor_girildimi = True
+
+    # Abstract Metotlar
+    @abstractmethod
+    def mac_sonucu(self):
+        pass
+
+    @abstractmethod
+    def mac_detay_getir(self):
+        pass
+
+    # Class Method
+    @classmethod
+    def sayac_artir(cls):
+        cls._toplam_mac_sayisi += 1
+
+    # Static Method
+    @staticmethod
+    def id_format_kontrol(id_value):
+        if isinstance(id_value, int) and id_value > 0:
+            return True
+        return False
