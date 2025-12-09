@@ -1,28 +1,29 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-# Projeye özel hata sınıfı
+# Projeye özgü temel hata sınıfı
 class TurnuvaHatasi(Exception):
     pass
 
+# Maç ve Turnuva yönetimi için soyut temel sınıf
 class MacBase(ABC):
     
     # Sınıf seviyesinde değişkenler (Class Attributes)
     _toplam_mac_sayisi = 0
     _gecerli_durumlar = ['planlandi', 'devam_ediyor', 'tamamlandi', 'iptal_edildi', 'ertelendi']
 
-    def __init__(self, ev_sahibi, deplasman, tarih_saat, mac_id):
-        # Kapsüllenmiş değişkenlere (property setter üzerinden) atama yapılıyor
-        self.mac_id = mac_id
+    # --- DÜZELTİLEN INIT SIRALAMASI ---
+    def __init__(self, mac_id, ev_sahibi, deplasman, tarih_saat):
+        self.mac_id = mac_id          # ID en başta atanır
         self.ev_sahibi = ev_sahibi
         self.deplasman = deplasman
         self.tarih_saat = tarih_saat
         
-        # Varsayılan değerler (Doğrudan protected değişkene atama)
-        self._durum = 'planlandi'
+        # Varsayılan değerler
+        self._durum = "planlandi"
         self._skor_ev = 0
-        self._skor_deplasman = 0
-        self._skor_girildimi = False
+        self._skor_dep = 0
+        self._skor_girildi_mi = False
         self._konum = "Ana Stadyum"
         self._hakem = "Atanmadi"
         
@@ -57,7 +58,7 @@ class MacBase(ABC):
 
     @deplasman.setter
     def deplasman(self, value):
-        # Henüz ev sahibi atanmadıysa hata vermemesi için kontrol (init sırası önemli)
+        # Henüz ev sahibi atanmadıysa hata vermemesi için kontrol
         if hasattr(self, '_ev_sahibi') and value == self._ev_sahibi:
             raise TurnuvaHatasi("Ev sahibi ve deplasman takımları aynı olamaz.")
         self._deplasman = value
@@ -103,16 +104,21 @@ class MacBase(ABC):
             raise TurnuvaHatasi("Hakem isminde sayi olamaz.")
         self._hakem = value
 
+    # --- İŞTE EKSİK OLAN KISIM (SKOR PROPERTY) ---
+    @property
+    def skor(self):
+        """Skor bilgisini '2-1' formatında string olarak döner."""
+        return str(self._skor_ev) + "-" + str(self._skor_dep)
+
     def skor_belirle(self, skor_ev, skor_deplasman):
         if not isinstance(skor_ev, int) or not isinstance(skor_deplasman, int):
             raise TypeError("Skorlar tam sayı olmalıdır.")
         if skor_ev < 0 or skor_deplasman < 0:
             raise TurnuvaHatasi("Skorlar negatif olamaz.")
         
-        # Doğrudan gizli değişkenlere atama yapıyoruz
         self._skor_ev = skor_ev
-        self._skor_deplasman = skor_deplasman
-        self._skor_girildimi = True
+        self._skor_dep = skor_deplasman # Değişken adı düzeltildi (_skor_dep)
+        self._skor_girildi_mi = True
 
     # Abstract Metotlar
     @abstractmethod
@@ -127,6 +133,10 @@ class MacBase(ABC):
     @classmethod
     def sayac_artir(cls):
         cls._toplam_mac_sayisi += 1
+        
+    @classmethod
+    def toplam_sayi_getir(cls):
+        return cls._toplam_mac_sayisi
 
     # Static Method
     @staticmethod
