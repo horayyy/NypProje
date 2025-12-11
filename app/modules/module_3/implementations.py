@@ -65,8 +65,7 @@ class HazirlikMaci(MacBase):
             return 0.0
         return gelir
 
-    # --- DÜZELTİLEN KISIM BURASI ---
-    # Metodun adı 'puan_hesapla' idi, 'mac_sonucu' yaptık.
+   
     def mac_sonucu(self):
         if not self._skor_girildi_mi:
             return "Maç oynanmadı"
@@ -91,3 +90,77 @@ class HazirlikMaci(MacBase):
         if isinstance(isim, str) and len(isim) >= 5:
             return True
         return False
+    
+    
+
+
+# LİG MAÇI SINIFI 
+
+
+class LigMaci(MacBase):
+    
+    # Lig kuralları 
+    _kazanan_puan = 3
+    _beraberlik_puan = 1
+    _maglubiyet_puan = 0
+
+    def __init__(self, mac_id, ev_sahibi, deplasman, tarih_saat, lig_adi, hafta_no):
+       
+        super().__init__(mac_id, ev_sahibi, deplasman, tarih_saat)
+        
+        self.lig_adi = lig_adi
+        self.hafta_no = hafta_no
+        self._sezon = f"{tarih_saat.year}-{tarih_saat.year+1} Sezonu"
+
+    
+    @property
+    def lig_adi(self):
+        return self._lig_adi
+
+    @lig_adi.setter
+    def lig_adi(self, deger):
+        if not deger or len(deger) < 3:
+            raise TurnuvaHatasi("Lig adı en az 3 karakter olmalıdır.")
+        self._lig_adi = deger
+
+    
+    @property
+    def hafta_no(self):
+        return self._hafta_no
+
+    @hafta_no.setter
+    def hafta_no(self, deger):
+        if not isinstance(deger, int) or deger <= 0:
+            raise TurnuvaHatasi("Hafta numarası pozitif tam sayı olmalıdır.")
+        self._hafta_no = deger
+
+    # ---  3 Puan Sistemini Hesaplayan Metot ---
+    def mac_sonucu(self):
+        if not self._skor_girildi_mi:
+            return "Maç henüz tamamlanmadı, puan hesaplanamaz."
+
+        puan_ev = 0
+        puan_dep = 0
+
+        
+        if self._skor_ev > self._skor_dep:
+            puan_ev = self._kazanan_puan
+            puan_dep = self._maglubiyet_puan
+        elif self._skor_dep > self._skor_ev:
+            puan_ev = self._maglubiyet_puan
+            puan_dep = self._kazanan_puan
+        else:
+            puan_ev = self._beraberlik_puan
+            puan_dep = self._beraberlik_puan
+
+        return {
+            "ev_sahibi_puan": puan_ev, 
+            "deplasman_puan": puan_dep,
+            "lig": self.lig_adi,
+            "hafta": self.hafta_no
+        }
+
+    # Maç Detayı (Polymorphism örneği - Base sınıfı eziyoruz)
+    def mac_detay_getir(self):
+        durum_ikonu = "✅" if self.durum == "tamamlandi" else "⏳"
+        return f"{durum_ikonu} [Lig: {self.lig_adi}] {self.ev_sahibi} vs {self.deplasman} ({self.hafta_no}. Hafta)"
