@@ -164,3 +164,48 @@ class LigMaci(MacBase):
     def mac_detay_getir(self):
         durum_ikonu = "✅" if self.durum == "tamamlandi" else "⏳"
         return f"{durum_ikonu} [Lig: {self.lig_adi}] {self.ev_sahibi} vs {self.deplasman} ({self.hafta_no}. Hafta)"
+
+
+
+# ELEME MAÇI SINIFI 
+
+import random 
+
+class ElemeMaci(MacBase):
+    def __init__(self, mac_id, ev_sahibi, deplasman, tarih_saat, tur_adi):
+        super().__init__(mac_id, ev_sahibi, deplasman, tarih_saat)
+        self.tur_adi = tur_adi
+        self._penalti_skoru = None 
+
+    def penalti_skoru_belirle(self, ev_p, dep_p):
+        if ev_p == dep_p:
+            raise TurnuvaHatasi("Penaltılarda beraberlik olamaz!")
+        self._penalti_skoru = (ev_p, dep_p)
+        print(f"   📢 Penaltı Sonucu Girildi: {ev_p} - {dep_p}")
+
+    def mac_sonucu(self):
+        if not self._skor_girildi_mi:
+            return "Maç oynanmadı."
+
+        if self._skor_ev > self._skor_dep:
+            kazanan = self.ev_sahibi
+        elif self._skor_dep > self._skor_ev:
+            kazanan = self.deplasman
+        else:
+
+            if self._penalti_skoru is None:
+                return "Maç berabere bitti ama penaltılar atılmadı! Kazanan belirsiz."
+            
+            p_ev, p_dep = self._penalti_skoru
+            kazanan = self.ev_sahibi if p_ev > p_dep else self.deplasman
+            kazanan += " (Penaltılarla)"
+
+        return {
+            "tur": self.tur_adi,
+            "kazanan": kazanan,
+            "skor": self.skor,
+            "penalti_skoru": self._penalti_skoru
+        }
+
+    def mac_detay_getir(self):
+        return f"🏆 [{self.tur_adi}] {self.ev_sahibi} vs {self.deplasman}"
