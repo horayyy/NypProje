@@ -14,7 +14,7 @@ except ImportError:
 def main():
     final = ElemeMaci(2025, "Manchester City", "Real Madrid", datetime.now(), "Final")
     
-    final.durum = "tamamlandi"
+    final.durum = "finished"
     final.skor_belirle(1, 1)
     
     print(final.mac_sonucu())

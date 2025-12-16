@@ -10,17 +10,19 @@ class MacBase(ABC):
     
     # Sınıf seviyesinde değişkenler (Class Attributes)
     _toplam_mac_sayisi = 0
-    _gecerli_durumlar = ['planlandi', 'devam_ediyor', 'tamamlandi', 'iptal_edildi', 'ertelendi']
+    _gecerli_durumlar = ['scheduled', 'in_progress', 'finished', 'cancelled', 'postponed']
+    _gecerli_mac_tipleri = ['friendly', 'league', 'cup', 'tournament']
 
     # --- DÜZELTİLEN INIT SIRALAMASI ---
-    def __init__(self, mac_id, ev_sahibi, deplasman, tarih_saat):
+    def __init__(self, mac_id, ev_sahibi, deplasman, tarih_saat, match_type='friendly'):
         self.mac_id = mac_id          # ID en başta atanır
         self.ev_sahibi = ev_sahibi
         self.deplasman = deplasman
         self.tarih_saat = tarih_saat
+        self.match_type = match_type
         
         # Varsayılan değerler
-        self._durum = "planlandi"
+        self._durum = "scheduled"
         self._skor_ev = 0
         self._skor_dep = 0
         self._skor_girildi_mi = False
@@ -72,6 +74,17 @@ class MacBase(ABC):
         if not isinstance(value, datetime):
             raise TypeError("Tarih objesi datetime tipinde olmalı.")
         self._tarih_saat = value
+
+    @property
+    def match_type(self):
+        return self._match_type
+    
+    @match_type.setter
+    def match_type(self, value):
+        if value not in MacBase._gecerli_mac_tipleri:
+            gecerli_str = ", ".join(MacBase._gecerli_mac_tipleri)
+            raise TurnuvaHatasi(f"Geçersiz maç tipi. Beklenenler: {gecerli_str}")
+        self._match_type = value
 
     @property
     def durum(self):
@@ -129,6 +142,10 @@ class MacBase(ABC):
     def mac_detay_getir(self):
         pass
 
+    @abstractmethod
+    def puan_hesapla(self):
+        pass
+
     # Class Method
     @classmethod
     def sayac_artir(cls):
@@ -138,9 +155,25 @@ class MacBase(ABC):
     def toplam_sayi_getir(cls):
         return cls._toplam_mac_sayisi
 
+    @classmethod
+    def gecerli_durumlar_getir(cls):
+        return cls._gecerli_durumlar.copy()
+
+    @classmethod
+    def gecerli_mac_tipleri_getir(cls):
+        return cls._gecerli_mac_tipleri.copy()
+
     # Static Method
     @staticmethod
     def id_format_kontrol(id_value):
         if isinstance(id_value, int) and id_value > 0:
             return True
         return False
+
+    @staticmethod
+    def durum_gecerli_mi(durum):
+        return durum in MacBase._gecerli_durumlar
+
+    @staticmethod
+    def mac_tipi_gecerli_mi(mac_tipi):
+        return mac_tipi in MacBase._gecerli_mac_tipleri
