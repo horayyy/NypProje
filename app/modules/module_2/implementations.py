@@ -764,3 +764,331 @@ class RehabTrainingSession(AntrenmanOturumuTemel):
             "diğer": 1
         }
         return oncelikler.get(sakatlik_tipi.lower(), 1)
+
+
+class TrainingPlan:
+    """
+    Bir sporcunun belirli bir dönem için antrenman planını temsil eden entity sınıfı.
+    Plan; tarih aralığı, hedef ve ilişkilendirilmiş sporcu bilgisini içerir.
+    """
+
+    def __init__(
+        self,
+        plan_id: int,
+        sporcu_id: int,
+        baslangic_tarihi: datetime,
+        bitis_tarihi: datetime,
+        hedef: str,
+    ) -> None:
+        self._plan_id: int
+        self._sporcu_id: int
+        self._baslangic_tarihi: datetime
+        self._bitis_tarihi: datetime
+        self._hedef: str
+
+        self.plan_id = plan_id
+        self.sporcu_id = sporcu_id
+        self.baslangic_tarihi = baslangic_tarihi
+        self.bitis_tarihi = bitis_tarihi
+        self.hedef = hedef
+
+    @property
+    def plan_id(self) -> int:
+        """Plan ID bilgisini döndürür."""
+        return self._plan_id
+
+    @plan_id.setter
+    def plan_id(self, value: int) -> None:
+        if not isinstance(value, int) or value <= 0:
+            raise ValueError("Plan ID pozitif bir tam sayı olmalıdır")
+        self._plan_id = value
+
+    @property
+    def sporcu_id(self) -> int:
+        """Plana bağlı sporcunun ID bilgisini döndürür."""
+        return self._sporcu_id
+
+    @sporcu_id.setter
+    def sporcu_id(self, value: int) -> None:
+        if not isinstance(value, int) or value <= 0:
+            raise GecersizSporcuIdHatasi()
+        self._sporcu_id = value
+
+    @property
+    def baslangic_tarihi(self) -> datetime:
+        """Plan başlangıç tarihini döndürür."""
+        return self._baslangic_tarihi
+
+    @baslangic_tarihi.setter
+    def baslangic_tarihi(self, value: datetime) -> None:
+        if not isinstance(value, datetime):
+            raise GecersizTarihSaatHatasi("Başlangıç tarihi datetime olmalıdır")
+        self._baslangic_tarihi = value
+
+    @property
+    def bitis_tarihi(self) -> datetime:
+        """Plan bitiş tarihini döndürür."""
+        return self._bitis_tarihi
+
+    @bitis_tarihi.setter
+    def bitis_tarihi(self, value: datetime) -> None:
+        if not isinstance(value, datetime):
+            raise GecersizTarihSaatHatasi("Bitiş tarihi datetime olmalıdır")
+        if hasattr(self, "_baslangic_tarihi") and value < self._baslangic_tarihi:
+            raise ValueError("Bitiş tarihi başlangıç tarihinden önce olamaz")
+        self._bitis_tarihi = value
+
+    @property
+    def hedef(self) -> str:
+        """Planın temel hedef açıklamasını döndürür."""
+        return self._hedef
+
+    @hedef.setter
+    def hedef(self, value: str) -> None:
+        if not isinstance(value, str):
+            raise ValueError("Hedef metni string olmalıdır")
+        temiz = value.strip()
+        if not temiz:
+            raise ValueError("Hedef metni boş olamaz")
+        self._hedef = temiz
+
+    def plan_detaylari(self) -> Dict[str, Any]:
+        """
+        Planın tüm detaylarını sözlük olarak döndürür.
+        Gün 4 planındaki `plan_detaylari()` gereksinimini karşılar.
+        """
+        return {
+            "plan_id": self.plan_id,
+            "sporcu_id": self.sporcu_id,
+            "baslangic_tarihi": self.baslangic_tarihi.isoformat(),
+            "bitis_tarihi": self.bitis_tarihi.isoformat(),
+            "hedef": self.hedef,
+            "gun_sayisi": self.plan_suresi_hesapla(),
+        }
+
+    def plan_suresi_hesapla(self) -> int:
+        """
+        Plan süresini gün cinsinden hesaplar.
+        Başlangıç ve bitiş tarihleri aynı gün ise sonuç 1 olur.
+        """
+        fark = self.bitis_tarihi.date() - self.baslangic_tarihi.date()
+        return fark.days + 1
+
+    @classmethod
+    def kisa_vadeli_plan_olustur(
+        cls,
+        plan_id: int,
+        sporcu_id: int,
+        baslangic: datetime,
+        hedef: str,
+    ) -> "TrainingPlan":
+        """
+        Varsayılan olarak 4 haftalık kısa vadeli antrenman planı oluşturur.
+        """
+        from datetime import timedelta
+
+        bitis = baslangic + timedelta(weeks=4)
+        return cls(
+            plan_id=plan_id,
+            sporcu_id=sporcu_id,
+            baslangic_tarihi=baslangic,
+            bitis_tarihi=bitis,
+            hedef=hedef,
+        )
+
+    @staticmethod
+    def tarih_araligindan_gun_sayisi(baslangic: datetime, bitis: datetime) -> int:
+        """Verilen iki tarih arasındaki gün sayısını hesaplayan yardımcı static metot."""
+        if not isinstance(baslangic, datetime) or not isinstance(bitis, datetime):
+            raise ValueError("Başlangıç ve bitiş datetime olmalıdır")
+        if bitis < baslangic:
+            raise ValueError("Bitiş tarihi başlangıç tarihinden önce olamaz")
+        return (bitis.date() - baslangic.date()).days + 1
+
+
+class TrainingSchedule:
+    """
+    Haftalık antrenman programını ve bu programa bağlı oturum listesini temsil eder.
+    """
+
+    GECERLI_PROGRAM_SEVIYELERI = ["düşük", "orta", "yüksek"]
+
+    def __init__(
+        self,
+        program_id: int,
+        haftalik_program: str,
+        oturumlar: Optional[List[AntrenmanOturumuTemel]] = None,
+    ) -> None:
+        self._program_id: int
+        self._haftalik_program: str
+        self._oturumlar: List[AntrenmanOturumuTemel] = []
+
+        self.program_id = program_id
+        self.haftalik_program = haftalik_program
+        if oturumlar:
+            for oturum in oturumlar:
+                self.oturum_ekle(oturum)
+
+    @property
+    def program_id(self) -> int:
+        """Program ID bilgisini döndürür."""
+        return self._program_id
+
+    @program_id.setter
+    def program_id(self, value: int) -> None:
+        if not isinstance(value, int) or value <= 0:
+            raise ValueError("Program ID pozitif bir tam sayı olmalıdır")
+        self._program_id = value
+
+    @property
+    def haftalik_program(self) -> str:
+        """Haftalık program seviyesini döndürür (düşük/orta/yüksek)."""
+        return self._haftalik_program
+
+    @haftalik_program.setter
+    def haftalik_program(self, value: str) -> None:
+        if not isinstance(value, str):
+            raise ValueError("Haftalık program string olmalıdır")
+        seviye = value.lower().strip()
+        if seviye not in self.GECERLI_PROGRAM_SEVIYELERI:
+            raise ValueError(
+                f"Haftalık program {self.GECERLI_PROGRAM_SEVIYELERI} değerlerinden biri olmalıdır"
+            )
+        self._haftalik_program = seviye
+
+    @property
+    def oturumlar(self) -> List[AntrenmanOturumuTemel]:
+        """Programa bağlı antrenman oturumu listesini döndürür."""
+        return list(self._oturumlar)
+
+    def oturum_ekle(self, oturum: AntrenmanOturumuTemel) -> None:
+        """
+        Programa yeni bir antrenman oturumu ekler.
+        Gün 4 planındaki `oturum_ekle()` gereksinimini karşılar.
+        """
+        if not isinstance(oturum, AntrenmanOturumuTemel):
+            raise TypeError("Yalnızca AntrenmanOturumuTemel tipinden nesneler eklenebilir")
+        self._oturumlar.append(oturum)
+
+    def haftalik_yuk_hesapla(self) -> int:
+        """
+        Tüm oturumların sürelerini toplayarak haftalık antrenman yükünü dakika cinsinden hesaplar.
+        """
+        return sum(oturum.sure for oturum in self._oturumlar)
+
+    def program_ozeti(self) -> Dict[str, Any]:
+        """Programın özet bilgilerini sözlük olarak döndürür."""
+        return {
+            "program_id": self.program_id,
+            "haftalik_program": self.haftalik_program,
+            "oturum_sayisi": len(self._oturumlar),
+            "toplam_sure_dakika": self.haftalik_yuk_hesapla(),
+        }
+
+    @classmethod
+    def bos_program_olustur(cls, program_id: int, seviye: str = "orta") -> "TrainingSchedule":
+        """Verilen seviye ile boş bir antrenman programı oluşturur."""
+        return cls(program_id=program_id, haftalik_program=seviye, oturumlar=None)
+
+    @staticmethod
+    def onerilen_maksimum_haftalik_sure(seviye: str) -> int:
+        """
+        Haftalık program seviyesine göre önerilen maksimum antrenman süresini (dakika) döndürür.
+        """
+        seviye = seviye.lower().strip()
+        harita = {"düşük": 240, "orta": 360, "yüksek": 540}
+        return harita.get(seviye, 360)
+
+
+class TrainingStatistics:
+    """
+    Bir sporcunun antrenman istatistiklerini tutan entity sınıfı.
+    Toplam oturum sayısı, tamamlanan ve iptal edilen oturumlar gibi temel metrikleri içerir.
+    """
+
+    def __init__(
+        self,
+        sporcu_id: int,
+        toplam_oturum: int = 0,
+        tamamlanan: int = 0,
+        iptal_edilen: int = 0,
+    ) -> None:
+        if not isinstance(sporcu_id, int) or sporcu_id <= 0:
+            raise GecersizSporcuIdHatasi()
+
+        self.sporcu_id: int = sporcu_id
+        self.toplam_oturum: int = max(0, toplam_oturum)
+        self.tamamlanan: int = max(0, tamamlanan)
+        self.iptal_edilen: int = max(0, iptal_edilen)
+
+    def istatistik_guncelle(self, yeni_durum: str) -> None:
+        """
+        Verilen duruma göre istatistikleri günceller.
+        Gün 4 planındaki `istatistik_guncelle()` gereksinimini karşılar.
+        """
+        self.toplam_oturum += 1
+        durum = yeni_durum.lower().strip()
+
+        if durum == "tamamlandi":
+            self.tamamlanan += 1
+        elif durum == "iptal_edildi":
+            self.iptal_edilen += 1
+
+    def basari_orani_hesapla(self) -> float:
+        """
+        Tamamlanan oturum sayısına göre başarı oranını yüzde olarak hesaplar.
+        """
+        if self.toplam_oturum == 0:
+            return 0.0
+        oran = (self.tamamlanan / self.toplam_oturum) * 100
+        return round(oran, 2)
+
+    def istatistik_ozeti(self) -> Dict[str, Any]:
+        """İstatistiklerin özetini sözlük olarak döndürür."""
+        return {
+            "sporcu_id": self.sporcu_id,
+            "toplam_oturum": self.toplam_oturum,
+            "tamamlanan": self.tamamlanan,
+            "iptal_edilen": self.iptal_edilen,
+            "basari_orani": self.basari_orani_hesapla(),
+        }
+
+    @classmethod
+    def oturumlardan_olustur(
+        cls,
+        sporcu_id: int,
+        oturumlar: List[AntrenmanOturumuTemel],
+    ) -> "TrainingStatistics":
+        """
+        Verilen sporcuya ait oturum listesinden istatistik nesnesi oluşturur.
+        """
+        toplam = 0
+        tamamlanan = 0
+        iptal_edilen = 0
+
+        for oturum in oturumlar:
+            if oturum.athlete_id != sporcu_id:
+                continue
+            toplam += 1
+            if oturum.durum == "tamamlandi":
+                tamamlanan += 1
+            elif oturum.durum == "iptal_edildi":
+                iptal_edilen += 1
+
+        return cls(
+            sporcu_id=sporcu_id,
+            toplam_oturum=toplam,
+            tamamlanan=tamamlanan,
+            iptal_edilen=iptal_edilen,
+        )
+
+    @staticmethod
+    def durum_sayim(oturumlar: List[AntrenmanOturumuTemel]) -> Dict[str, int]:
+        """
+        Verilen oturum listesi için durumlara göre sayım yapan yardımcı static metot.
+        """
+        sayim: Dict[str, int] = {}
+        for oturum in oturumlar:
+            durum = oturum.durum
+            sayim[durum] = sayim.get(durum, 0) + 1
+        return sayim
