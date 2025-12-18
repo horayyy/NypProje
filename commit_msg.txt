@@ -1,0 +1,4 @@
+﻿Module 2: Repository ve Demo katmanları eklendi
+
+- Repository: Training, Plan, Schedule, Statistics repositoryleri
+- Demo: 8 senaryo ile polimorfizm ve CRUD operasyonları
