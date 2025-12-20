@@ -11,7 +11,9 @@ from app.modules.module_2.exceptions import (
     GecersizTarihSaatHatasi,
     GecersizSahaIdHatasi,
     SahaDoluHatasi,
-    AntrenmanHatasi
+    AntrenmanHatasi,
+    TakvimCakismasiHatasi,
+    OturumBulunamadiHatasi
 )
 
 
@@ -39,17 +41,6 @@ class IndividualTrainingSession(AntrenmanOturumuTemel):
     ):
         """
         Bireysel antrenman oturumu örneğini başlatır.
-        
-        Args:
-            oturum_id: Antrenman oturumu için benzersiz tanımlayıcı
-            sure: Antrenman süresi (dakika)
-            athlete_id: Sporcu ID'si (zorunlu)
-            antrenor_id: Antrenör ID'si
-            odak_alani: Antrenmanın odaklandığı alan (hız, güç, dayanıklılık, esneklik, koordinasyon)
-            oturum_tipi: Antrenman oturumu tipi
-            tarih_saat: Oturum için planlanan tarih ve saat
-            durum: Oturumun mevcut durumu
-            performans_notu: Sporcu performans notu (0-10 arası, opsiyonel)
         """
         super().__init__(
             oturum_id=oturum_id,
@@ -124,10 +115,7 @@ class IndividualTrainingSession(AntrenmanOturumuTemel):
             self._performans_notu = None
 
     def oturum_detaylari_getir(self) -> Dict[str, Any]:
-        """
-        Bireysel antrenman oturumunun detaylı bilgilerini döndürür.
-        Abstract metot implementasyonu.
-        """
+        """Bireysel antrenman oturumunun detaylı bilgilerini döndürür."""
         detaylar = {
             "oturum_id": self.oturum_id,
             "oturum_tipi": self.oturum_tipi,
@@ -143,11 +131,7 @@ class IndividualTrainingSession(AntrenmanOturumuTemel):
         return detaylar
 
     def oturum_maliyeti_hesapla(self) -> float:
-        """
-        Bireysel antrenman oturumunun maliyetini hesaplar.
-        Abstract metot implementasyonu.
-        Bireysel antrenmanlar için saatlik antrenör ücreti × süre (saat) hesaplanır.
-        """
+        """Bireysel antrenman oturumunun maliyetini hesaplar."""
         SAATLIK_ANTRENOR_UCRETI = 150.0
         
         saat = self.sure / 60.0
@@ -203,10 +187,7 @@ class IndividualTrainingSession(AntrenmanOturumuTemel):
         odak_alani: str = "hız",
         oturum_tipi: str = "kondisyon"
     ) -> 'IndividualTrainingSession':
-        """
-        Yeni bir bireysel antrenman oturumu oluşturur.
-        Class metodu ile kolay oluşturma sağlar.
-        """
+        """Yeni bir bireysel antrenman oturumu oluşturur."""
         return cls(
             oturum_id=oturum_id,
             sure=sure,
@@ -236,10 +217,7 @@ class IndividualTrainingSession(AntrenmanOturumuTemel):
 
     @staticmethod
     def performans_notu_karsilastir(not1: float, not2: float) -> int:
-        """
-        İki performans notunu karşılaştırır.
-        Returns: -1 (not1 < not2), 0 (not1 == not2), 1 (not1 > not2)
-        """
+        """İki performans notunu karşılaştırır."""
         if not IndividualTrainingSession.performans_notu_dogrula(not1):
             raise ValueError(f"İlk not geçersiz: {not1}")
         if not IndividualTrainingSession.performans_notu_dogrula(not2):
@@ -275,20 +253,7 @@ class TeamTrainingSession(AntrenmanOturumuTemel):
         tarih_saat: Optional[datetime] = None,
         durum: str = "planlandı"
     ):
-        """
-        Takım antrenman oturumu örneğini başlatır.
-        
-        Args:
-            oturum_id: Antrenman oturumu için benzersiz tanımlayıcı
-            sure: Antrenman süresi (dakika)
-            team_id: Takım ID'si (zorunlu)
-            saha_id: Saha ID'si
-            katilimci_sayisi: Antrenmana katılan sporcu sayısı
-            antrenman_plani: Antrenman planı tipi (taktik, kondisyon, teknik, maç_hazırlığı)
-            oturum_tipi: Antrenman oturumu tipi
-            tarih_saat: Oturum için planlanan tarih ve saat
-            durum: Oturumun mevcut durumu
-        """
+        """Takım antrenman oturumu örneğini başlatır."""
         super().__init__(
             oturum_id=oturum_id,
             sure=sure,
@@ -355,10 +320,7 @@ class TeamTrainingSession(AntrenmanOturumuTemel):
         self._antrenman_plani = plan_formatted
 
     def oturum_detaylari_getir(self) -> Dict[str, Any]:
-        """
-        Takım antrenman oturumunun detaylı bilgilerini döndürür.
-        Abstract metot implementasyonu.
-        """
+        """Takım antrenman oturumunun detaylı bilgilerini döndürür."""
         detaylar = {
             "oturum_id": self.oturum_id,
             "oturum_tipi": self.oturum_tipi,
@@ -374,11 +336,7 @@ class TeamTrainingSession(AntrenmanOturumuTemel):
         return detaylar
 
     def oturum_maliyeti_hesapla(self) -> float:
-        """
-        Takım antrenman oturumunun maliyetini hesaplar.
-        Abstract metot implementasyonu.
-        Takım antrenmanları için saha kirası + antrenör ücreti hesaplanır.
-        """
+        """Takım antrenman oturumunun maliyetini hesaplar."""
         SAHA_KIRASI_SAATLIK = 200.0
         ANTRENOR_UCRETI_SAATLIK = 250.0
         
@@ -404,15 +362,7 @@ class TeamTrainingSession(AntrenmanOturumuTemel):
         self.katilimci_sayisi = yeni_toplam
 
     def saha_rezervasyon_kontrol(self, mevcut_rezervasyonlar: List[Dict[str, Any]]) -> bool:
-        """
-        Sahanın belirtilen tarih ve saatte müsait olup olmadığını kontrol eder.
-        
-        Args:
-            mevcut_rezervasyonlar: Mevcut saha rezervasyonlarının listesi
-        
-        Returns:
-            True eğer saha müsaitse, False eğer doluysa
-        """
+        """Sahanın belirtilen tarih ve saatte müsait olup olmadığını kontrol eder."""
         if self.tarih_saat is None:
             return True
         
@@ -451,10 +401,7 @@ class TeamTrainingSession(AntrenmanOturumuTemel):
         katilimci_sayisi: int,
         antrenman_plani: str = "taktik"
     ) -> 'TeamTrainingSession':
-        """
-        Yeni bir takım antrenman oturumu oluşturur.
-        Class metodu ile kolay oluşturma sağlar.
-        """
+        """Yeni bir takım antrenman oturumu oluşturur."""
         return cls(
             oturum_id=oturum_id,
             sure=sure,
@@ -481,15 +428,7 @@ class TeamTrainingSession(AntrenmanOturumuTemel):
 
     @staticmethod
     def saha_kapasitesi_hesapla(saha_boyutu: str) -> int:
-        """
-        Saha boyutuna göre maksimum katılımcı kapasitesini hesaplar.
-        
-        Args:
-            saha_boyutu: "küçük", "orta", "büyük"
-        
-        Returns:
-            Maksimum katılımcı sayısı
-        """
+        """Saha boyutuna göre maksimum katılımcı kapasitesini hesaplar."""
         kapasiteler = {
             "küçük": 10,
             "orta": 20,
@@ -521,21 +460,7 @@ class RehabTrainingSession(AntrenmanOturumuTemel):
         durum: str = "planlandı",
         ilerleme_notu: Optional[float] = None
     ):
-        """
-        Rehabilitasyon antrenman oturumu örneğini başlatır.
-        
-        Args:
-            oturum_id: Antrenman oturumu için benzersiz tanımlayıcı
-            sure: Antrenman süresi (dakika)
-            athlete_id: Sporcu ID'si (zorunlu)
-            fizyoterapist_id: Fizyoterapist ID'si
-            sakatlik_tipi: Sakatlık tipi (kas, eklem, kırık, burkulma, yırtık, diğer)
-            rehab_programi: Rehabilitasyon programı adı
-            oturum_tipi: Antrenman oturumu tipi
-            tarih_saat: Oturum için planlanan tarih ve saat
-            durum: Oturumun mevcut durumu
-            ilerleme_notu: İlerleme değerlendirme notu (0-10 arası, opsiyonel)
-        """
+        """Rehabilitasyon antrenman oturumu örneğini başlatır."""
         super().__init__(
             oturum_id=oturum_id,
             sure=sure,
@@ -625,10 +550,7 @@ class RehabTrainingSession(AntrenmanOturumuTemel):
             self._ilerleme_notu = None
 
     def oturum_detaylari_getir(self) -> Dict[str, Any]:
-        """
-        Rehabilitasyon antrenman oturumunun detaylı bilgilerini döndürür.
-        Abstract metot implementasyonu.
-        """
+        """Rehabilitasyon antrenman oturumunun detaylı bilgilerini döndürür."""
         detaylar = {
             "oturum_id": self.oturum_id,
             "oturum_tipi": self.oturum_tipi,
@@ -645,11 +567,7 @@ class RehabTrainingSession(AntrenmanOturumuTemel):
         return detaylar
 
     def oturum_maliyeti_hesapla(self) -> float:
-        """
-        Rehabilitasyon antrenman oturumunun maliyetini hesaplar.
-        Abstract metot implementasyonu.
-        Rehabilitasyon için fizyoterapist ücreti + özel ekipman maliyeti hesaplanır.
-        """
+        """Rehabilitasyon antrenman oturumunun maliyetini hesaplar."""
         FIZYOTERAPIST_UCRETI_SAATLIK = 300.0
         EKIPMAN_MALIYETI_SAATLIK = 50.0
         
@@ -712,10 +630,7 @@ class RehabTrainingSession(AntrenmanOturumuTemel):
         sakatlik_tipi: str,
         rehab_programi: str = "temel"
     ) -> 'RehabTrainingSession':
-        """
-        Yeni bir rehabilitasyon oturumu oluşturur.
-        Class metodu ile kolay oluşturma sağlar.
-        """
+        """Yeni bir rehabilitasyon oturumu oluşturur."""
         return cls(
             oturum_id=oturum_id,
             sure=sure,
@@ -746,15 +661,7 @@ class RehabTrainingSession(AntrenmanOturumuTemel):
 
     @staticmethod
     def sakatlik_onceligi_hesapla(sakatlik_tipi: str) -> int:
-        """
-        Sakatlık tipine göre öncelik seviyesini hesaplar.
-        
-        Args:
-            sakatlik_tipi: Sakatlık tipi
-        
-        Returns:
-            Öncelik seviyesi (1-5 arası, 5 en yüksek)
-        """
+        """Sakatlık tipine göre öncelik seviyesini hesaplar."""
         oncelikler = {
             "kırık": 5,
             "yırtık": 4,
@@ -853,10 +760,7 @@ class TrainingPlan:
         self._hedef = temiz
 
     def plan_detaylari(self) -> Dict[str, Any]:
-        """
-        Planın tüm detaylarını sözlük olarak döndürür.
-        Gün 4 planındaki `plan_detaylari()` gereksinimini karşılar.
-        """
+        """Planın tüm detaylarını sözlük olarak döndürür."""
         return {
             "plan_id": self.plan_id,
             "sporcu_id": self.sporcu_id,
@@ -867,10 +771,7 @@ class TrainingPlan:
         }
 
     def plan_suresi_hesapla(self) -> int:
-        """
-        Plan süresini gün cinsinden hesaplar.
-        Başlangıç ve bitiş tarihleri aynı gün ise sonuç 1 olur.
-        """
+        """Plan süresini gün cinsinden hesaplar."""
         fark = self.bitis_tarihi.date() - self.baslangic_tarihi.date()
         return fark.days + 1
 
@@ -882,9 +783,7 @@ class TrainingPlan:
         baslangic: datetime,
         hedef: str,
     ) -> "TrainingPlan":
-        """
-        Varsayılan olarak 4 haftalık kısa vadeli antrenman planı oluşturur.
-        """
+        """Varsayılan olarak 4 haftalık kısa vadeli antrenman planı oluşturur."""
         from datetime import timedelta
 
         bitis = baslangic + timedelta(weeks=4)
@@ -962,18 +861,13 @@ class TrainingSchedule:
         return list(self._oturumlar)
 
     def oturum_ekle(self, oturum: AntrenmanOturumuTemel) -> None:
-        """
-        Programa yeni bir antrenman oturumu ekler.
-        Gün 4 planındaki `oturum_ekle()` gereksinimini karşılar.
-        """
+        """Programa yeni bir antrenman oturumu ekler."""
         if not isinstance(oturum, AntrenmanOturumuTemel):
             raise TypeError("Yalnızca AntrenmanOturumuTemel tipinden nesneler eklenebilir")
         self._oturumlar.append(oturum)
 
     def haftalik_yuk_hesapla(self) -> int:
-        """
-        Tüm oturumların sürelerini toplayarak haftalık antrenman yükünü dakika cinsinden hesaplar.
-        """
+        """Tüm oturumların sürelerini toplayarak haftalık antrenman yükünü dakika cinsinden hesaplar."""
         return sum(oturum.sure for oturum in self._oturumlar)
 
     def program_ozeti(self) -> Dict[str, Any]:
@@ -992,9 +886,7 @@ class TrainingSchedule:
 
     @staticmethod
     def onerilen_maksimum_haftalik_sure(seviye: str) -> int:
-        """
-        Haftalık program seviyesine göre önerilen maksimum antrenman süresini (dakika) döndürür.
-        """
+        """Haftalık program seviyesine göre önerilen maksimum antrenman süresini (dakika) döndürür."""
         seviye = seviye.lower().strip()
         harita = {"düşük": 240, "orta": 360, "yüksek": 540}
         return harita.get(seviye, 360)
@@ -1022,10 +914,7 @@ class TrainingStatistics:
         self.iptal_edilen: int = max(0, iptal_edilen)
 
     def istatistik_guncelle(self, yeni_durum: str) -> None:
-        """
-        Verilen duruma göre istatistikleri günceller.
-        Gün 4 planındaki `istatistik_guncelle()` gereksinimini karşılar.
-        """
+        """Verilen duruma göre istatistikleri günceller."""
         self.toplam_oturum += 1
         durum = yeni_durum.lower().strip()
 
@@ -1035,9 +924,7 @@ class TrainingStatistics:
             self.iptal_edilen += 1
 
     def basari_orani_hesapla(self) -> float:
-        """
-        Tamamlanan oturum sayısına göre başarı oranını yüzde olarak hesaplar.
-        """
+        """Tamamlanan oturum sayısına göre başarı oranını yüzde olarak hesaplar."""
         if self.toplam_oturum == 0:
             return 0.0
         oran = (self.tamamlanan / self.toplam_oturum) * 100
@@ -1059,9 +946,7 @@ class TrainingStatistics:
         sporcu_id: int,
         oturumlar: List[AntrenmanOturumuTemel],
     ) -> "TrainingStatistics":
-        """
-        Verilen sporcuya ait oturum listesinden istatistik nesnesi oluşturur.
-        """
+        """Verilen sporcuya ait oturum listesinden istatistik nesnesi oluşturur."""
         toplam = 0
         tamamlanan = 0
         iptal_edilen = 0
@@ -1084,11 +969,84 @@ class TrainingStatistics:
 
     @staticmethod
     def durum_sayim(oturumlar: List[AntrenmanOturumuTemel]) -> Dict[str, int]:
-        """
-        Verilen oturum listesi için durumlara göre sayım yapan yardımcı static metot.
-        """
+        """Verilen oturum listesi için durumlara göre sayım yapan yardımcı static metot."""
         sayim: Dict[str, int] = {}
         for oturum in oturumlar:
             durum = oturum.durum
             sayim[durum] = sayim.get(durum, 0) + 1
         return sayim
+
+
+class TrainingManager:
+    """
+    Antrenman modülü için Servis (Service) katmanı.
+    İş mantığı kurallarını uygular ve Repository ile haberleşir.
+    """
+    
+    def __init__(self, repository):
+        self.repo = repository
+
+    def oturum_olustur(self, oturum: AntrenmanOturumuTemel) -> None:
+        """
+        Yeni bir oturum oluşturur. Çakışma kontrolü yapar.
+        """
+        # 1. Çakışma Kontrolü (PDF Madde 111 gereksinimi)
+        if oturum.tarih_saat:
+            cakisma_var = self.repo.tarihe_gore_cakisma_kontrol(
+                oturum.tarih_saat, 
+                oturum.sure, 
+                oturum.oturum_id
+            )
+            if cakisma_var:
+                # Exception importları dosyanın başında yapıldı
+                raise TakvimCakismasiHatasi(f"Bu tarih ve saatte ({oturum.tarih_saat}) başka bir antrenman mevcut.")
+
+        # 2. Kayıt
+        self.repo.kaydet(oturum)
+        print(f"Bilgi: {oturum.oturum_id} ID'li oturum başarıyla oluşturuldu.")
+
+    def oturum_iptal_et(self, oturum_id: int) -> None:
+        """
+        Bir oturumu iptal eder.
+        """
+        oturum = self.repo.id_ile_bul(oturum_id)
+        if not oturum:
+            raise OturumBulunamadiHatasi()
+        
+        oturum.oturum_iptal_et()
+        self.repo.guncelle(oturum) # Durum değişikliğini kaydet
+        print(f"Bilgi: {oturum_id} ID'li oturum iptal edildi.")
+
+    def sporcu_programi_getir(self, athlete_id: int) -> List[Dict[str, Any]]:
+        """
+        Sporcunun antrenman geçmişini ve gelecek programını raporlar.
+        """
+        oturumlar = self.repo.sporcuya_gore_filtrele(athlete_id)
+        rapor = []
+        for o in oturumlar:
+            rapor.append(o.oturum_detaylari_getir())
+        return rapor
+
+    def toplu_program_olustur(self, baslangic_id: int, template_oturum: AntrenmanOturumuTemel, tekrar_sayisi: int, aralik_gun: int):
+        """
+        Belirli aralıklarla tekrar eden antrenmanlar oluşturur (Toplu işlem örneği).
+        """
+        from datetime import timedelta
+        import copy
+        
+        mevcut_tarih = template_oturum.tarih_saat
+        mevcut_id = baslangic_id
+        
+        for _ in range(tekrar_sayisi):
+            # Yeni bir kopya oluştur
+            yeni_oturum = copy.deepcopy(template_oturum)
+            yeni_oturum.oturum_id = mevcut_id
+            yeni_oturum.tarih_saat = mevcut_tarih
+            
+            try:
+                self.oturum_olustur(yeni_oturum)
+            except Exception as e:
+                print(f"Hata: {mevcut_id} ID'li periyodik oturum oluşturulamadı. Sebep: {e}")
+            
+            mevcut_tarih += timedelta(days=aralik_gun)
+            mevcut_id += 1
