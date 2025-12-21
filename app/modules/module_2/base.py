@@ -5,7 +5,9 @@ Tüm antrenman oturumu implementasyonlarının takip etmesi gereken sözleşmeyi
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Optional, Any, Dict
-from app.modules.module_2.exceptions import (
+
+
+from exceptions import (
     GecersizOturumIdHatasi,
     GecersizSporcuIdHatasi,
     GecersizTakimIdHatasi,

@@ -4,8 +4,9 @@ Subclass'lar, entity/model sınıfları ve service katmanı burada yer alır.
 """
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from app.modules.module_2.base import AntrenmanOturumuTemel
-from app.modules.module_2.exceptions import (
+
+from base import AntrenmanOturumuTemel
+from exceptions import (
     GecersizSporcuIdHatasi,
     GecersizTakimIdHatasi,
     GecersizTarihSaatHatasi,
@@ -990,16 +991,23 @@ class TrainingManager:
         """
         Yeni bir oturum oluşturur. Çakışma kontrolü yapar.
         """
-        # 1. Çakışma Kontrolü (PDF Madde 111 gereksinimi)
+        # 1. Çakışma Kontrolü (GÜNCELLENMİŞ KISIM)
         if oturum.tarih_saat:
-            cakisma_var = self.repo.tarihe_gore_cakisma_kontrol(
-                oturum.tarih_saat, 
-                oturum.sure, 
-                oturum.oturum_id
+            # Oturum tipine göre ID'leri güvenli şekilde alıyoruz
+            ath_id = getattr(oturum, 'athlete_id', None)
+            saha_id = getattr(oturum, 'saha_id', None)
+            
+            # Yeni repository metodunu çağırıyoruz: detayli_cakisma_kontrol
+            cakisma_var = self.repo.detayli_cakisma_kontrol(
+                tarih=oturum.tarih_saat, 
+                sure_dk=oturum.sure, 
+                haric_id=oturum.oturum_id,
+                athlete_id=ath_id,  # Sporcu kontrolü için
+                saha_id=saha_id     # Saha kontrolü için
             )
+            
             if cakisma_var:
-                # Exception importları dosyanın başında yapıldı
-                raise TakvimCakismasiHatasi(f"Bu tarih ve saatte ({oturum.tarih_saat}) başka bir antrenman mevcut.")
+                raise TakvimCakismasiHatasi(f"Bu tarih ve saatte ({oturum.tarih_saat}) planlanan kaynak (sporcu veya saha) dolu!")
 
         # 2. Kayıt
         self.repo.kaydet(oturum)
@@ -1014,7 +1022,7 @@ class TrainingManager:
             raise OturumBulunamadiHatasi()
         
         oturum.oturum_iptal_et()
-        self.repo.guncelle(oturum) # Durum değişikliğini kaydet
+        self.repo.guncelle(oturum) 
         print(f"Bilgi: {oturum_id} ID'li oturum iptal edildi.")
 
     def sporcu_programi_getir(self, athlete_id: int) -> List[Dict[str, Any]]:
@@ -1029,7 +1037,7 @@ class TrainingManager:
 
     def toplu_program_olustur(self, baslangic_id: int, template_oturum: AntrenmanOturumuTemel, tekrar_sayisi: int, aralik_gun: int):
         """
-        Belirli aralıklarla tekrar eden antrenmanlar oluşturur (Toplu işlem örneği).
+        Belirli aralıklarla tekrar eden antrenmanlar oluşturur.
         """
         from datetime import timedelta
         import copy
@@ -1038,7 +1046,6 @@ class TrainingManager:
         mevcut_id = baslangic_id
         
         for _ in range(tekrar_sayisi):
-            # Yeni bir kopya oluştur
             yeni_oturum = copy.deepcopy(template_oturum)
             yeni_oturum.oturum_id = mevcut_id
             yeni_oturum.tarih_saat = mevcut_tarih
