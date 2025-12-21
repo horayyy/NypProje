@@ -1,27 +1,24 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-# Projeye özgü temel hata sınıfı
 class TurnuvaHatasi(Exception):
     pass
 
-# Maç ve Turnuva yönetimi için soyut temel sınıf
 class MacBase(ABC):
     
-    # Sınıf seviyesinde değişkenler (Class Attributes)
     _toplam_mac_sayisi = 0
     _gecerli_durumlar = ['scheduled', 'in_progress', 'finished', 'cancelled', 'postponed']
     _gecerli_mac_tipleri = ['friendly', 'league', 'cup', 'tournament']
+    _gecerli_spor_dallari = ['futbol', 'basketbol', 'voleybol', 'hentbol', 'tenis']
 
-    # --- DÜZELTİLEN INIT SIRALAMASI ---
-    def __init__(self, mac_id, ev_sahibi, deplasman, tarih_saat, match_type='friendly'):
-        self.mac_id = mac_id          # ID en başta atanır
+    def __init__(self, mac_id, ev_sahibi, deplasman, tarih_saat, match_type='friendly', sport_type='futbol'):
+        self.mac_id = mac_id
         self.ev_sahibi = ev_sahibi
         self.deplasman = deplasman
         self.tarih_saat = tarih_saat
         self.match_type = match_type
+        self.sport_type = sport_type
         
-        # Varsayılan değerler
         self._durum = "scheduled"
         self._skor_ev = 0
         self._skor_dep = 0
@@ -29,7 +26,6 @@ class MacBase(ABC):
         self._konum = "Ana Stadyum"
         self._hakem = "Atanmadi"
         
-        # Sınıf metodunu çağırarak sayacı artırır
         MacBase.sayac_artir()
 
     @property 
@@ -60,7 +56,6 @@ class MacBase(ABC):
 
     @deplasman.setter
     def deplasman(self, value):
-        # Henüz ev sahibi atanmadıysa hata vermemesi için kontrol
         if hasattr(self, '_ev_sahibi') and value == self._ev_sahibi:
             raise TurnuvaHatasi("Ev sahibi ve deplasman takımları aynı olamaz.")
         self._deplasman = value
@@ -85,6 +80,17 @@ class MacBase(ABC):
             gecerli_str = ", ".join(MacBase._gecerli_mac_tipleri)
             raise TurnuvaHatasi(f"Geçersiz maç tipi. Beklenenler: {gecerli_str}")
         self._match_type = value
+
+    @property
+    def sport_type(self):
+        return self._sport_type
+    
+    @sport_type.setter
+    def sport_type(self, value):
+        if value not in MacBase._gecerli_spor_dallari:
+            gecerli_str = ", ".join(MacBase._gecerli_spor_dallari)
+            raise TurnuvaHatasi(f"Geçersiz spor dalı. Beklenenler: {gecerli_str}")
+        self._sport_type = value
 
     @property
     def durum(self):
@@ -117,10 +123,8 @@ class MacBase(ABC):
             raise TurnuvaHatasi("Hakem isminde sayi olamaz.")
         self._hakem = value
 
-    # --- İŞTE EKSİK OLAN KISIM (SKOR PROPERTY) ---
     @property
     def skor(self):
-        """Skor bilgisini '2-1' formatında string olarak döner."""
         return str(self._skor_ev) + "-" + str(self._skor_dep)
 
     def skor_belirle(self, skor_ev, skor_deplasman):
@@ -130,10 +134,9 @@ class MacBase(ABC):
             raise TurnuvaHatasi("Skorlar negatif olamaz.")
         
         self._skor_ev = skor_ev
-        self._skor_dep = skor_deplasman # Değişken adı düzeltildi (_skor_dep)
+        self._skor_dep = skor_deplasman
         self._skor_girildi_mi = True
 
-    # Abstract Metotlar
     @abstractmethod
     def mac_sonucu(self):
         pass
@@ -146,7 +149,6 @@ class MacBase(ABC):
     def puan_hesapla(self):
         pass
 
-    # Class Method
     @classmethod
     def sayac_artir(cls):
         cls._toplam_mac_sayisi += 1
@@ -163,7 +165,6 @@ class MacBase(ABC):
     def gecerli_mac_tipleri_getir(cls):
         return cls._gecerli_mac_tipleri.copy()
 
-    # Static Method
     @staticmethod
     def id_format_kontrol(id_value):
         if isinstance(id_value, int) and id_value > 0:
@@ -177,3 +178,82 @@ class MacBase(ABC):
     @staticmethod
     def mac_tipi_gecerli_mi(mac_tipi):
         return mac_tipi in MacBase._gecerli_mac_tipleri
+
+    def mac_bilgisi_al(self):
+        return {
+            "id": self.mac_id,
+            "ev_sahibi": self.ev_sahibi,
+            "deplasman": self.deplasman,
+            "tarih": self.tarih_saat.strftime("%Y-%m-%d %H:%M"),
+            "durum": self.durum,
+            "match_type": self.match_type,
+            "sport_type": self.sport_type,
+            "skor": self.skor if self._skor_girildi_mi else "Henüz girilmedi"
+        }
+
+    def mac_gecmis_mi(self):
+        from datetime import datetime
+        return self.tarih_saat < datetime.now()
+
+    def mac_yaklasan_mi(self, gun_sayisi=7):
+        from datetime import datetime, timedelta
+        bugun = datetime.now()
+        hedef = bugun + timedelta(days=gun_sayisi)
+        return bugun <= self.tarih_saat <= hedef
+
+    def mac_tamamlanabilir_mi(self):
+        return self.durum in ["scheduled", "in_progress"]
+
+    def mac_iptal_edilebilir_mi(self):
+        return self.durum in ["scheduled", "in_progress"]
+
+    @classmethod
+    def durum_listesi_getir(cls):
+        return cls._gecerli_durumlar.copy()
+
+    @classmethod
+    def mac_tipi_listesi_getir(cls):
+        return cls._gecerli_mac_tipleri.copy()
+
+    @classmethod
+    def spor_dali_listesi_getir(cls):
+        return cls._gecerli_spor_dallari.copy()
+
+    @staticmethod
+    def takim_adi_gecerli_mi(takim_adi):
+        return isinstance(takim_adi, str) and len(takim_adi) >= 3
+
+    @staticmethod
+    def tarih_gecmis_mi(tarih):
+        from datetime import datetime
+        return isinstance(tarih, datetime) and tarih < datetime.now()
+
+    @staticmethod
+    def spor_dali_gecerli_mi(sport_type):
+        return sport_type in MacBase._gecerli_spor_dallari
+
+    def skor_girildi_mi(self):
+        return self._skor_girildi_mi
+
+    def skor_sifirla(self):
+        self._skor_ev = 0
+        self._skor_dep = 0
+        self._skor_girildi_mi = False
+
+    def mac_baslat(self):
+        if self.durum != "scheduled":
+            raise TurnuvaHatasi("Sadece planlanmış maçlar başlatılabilir.")
+        self.durum = "in_progress"
+
+    def mac_bitir(self, skor_ev, skor_dep):
+        if self.durum != "in_progress":
+            raise TurnuvaHatasi("Sadece devam eden maçlar bitirilebilir.")
+        self.skor_belirle(skor_ev, skor_dep)
+        self.durum = "finished"
+
+    @classmethod
+    def durum_degistir(cls, mac, yeni_durum):
+        if yeni_durum not in cls._gecerli_durumlar:
+            raise TurnuvaHatasi(f"Geçersiz durum: {yeni_durum}")
+        mac.durum = yeni_durum
+        return mac
