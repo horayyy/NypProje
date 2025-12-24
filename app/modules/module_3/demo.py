@@ -3,10 +3,21 @@ import os
 from datetime import datetime
 
 # Windows konsol encoding sorunu için
-if sys.platform == 'win32':
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+# NOT: main.py zaten encoding ayarlarını yapıyor, burada tekrar yaparsak çakışma olur
+# Sadece doğrudan çalıştırıldığında encoding ayarlarını yap
+if sys.platform == 'win32' and __name__ == "__main__":
+    try:
+        import io
+        # Sadece eğer henüz wrap edilmemişse wrap et
+        if not isinstance(sys.stdout, io.TextIOWrapper):
+            if hasattr(sys.stdout, 'buffer'):
+                sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        if not isinstance(sys.stderr, io.TextIOWrapper):
+            if hasattr(sys.stderr, 'buffer'):
+                sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    except (AttributeError, ValueError, OSError):
+        # Zaten wrap edilmiş veya hata var, geç
+        pass
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, "../../.."))
@@ -20,7 +31,11 @@ except ImportError as e:
     print("KRİTİK HATA: Modüller bulunamadı!")
     print(f"Detay: {e}")
     print("Lütfen proje root dizininden çalıştırdığınızdan emin olun.")
-    sys.exit(1)
+    # Ana menüden çağrıldığında sys.exit yerine return yapalım
+    if __name__ == "__main__":
+        sys.exit(1)
+    else:
+        raise  # Ana menüden çağrıldığında exception'ı yukarı fırlat
 
 # ==========================================
 # YARDIMCI FONKSİYONLAR
@@ -39,7 +54,8 @@ def menu_yazdir():
     print("[5] Takım İstatistikleri")
     print("[6] Takım Maç Geçmişi")
     print("[7] Lig Bilgileri")
-    print("[8] Çıkış")
+    print("[8] Ana Menüye Dön")
+    print("[9] Çıkış")
     print("-" * 60)
 
 def tarih_al(mesaj="Tarih girin"):
@@ -488,10 +504,15 @@ def main():
             except Exception as e:
                 print(f"Beklenmeyen hata: {e}")
 
-        # --- 8. ÇIKIŞ ---
+        # --- 8. ANA MENÜYE DÖN ---
         elif secim == '8':
+            print("\n>>> Ana menüye dönülüyor...")
+            return  # Ana menüye dön
+        
+        # --- 9. ÇIKIŞ ---
+        elif secim == '9':
             print("\nÇıkış yapılıyor...")
-            break
+            sys.exit(0)
         
         else:
             print("\nGeçersiz seçim!")
